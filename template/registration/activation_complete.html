@@ -1,0 +1,16 @@
+{% extends "registration/base.html" %}
+{% load i18n %}
+{% comment %}
+**registration/registration_complete.html**
+
+Used after successful completion of the registration form. This
+template has no context variables of its own, and should simply inform
+the user that an email containing account-activation information has
+been sent.
+{% endcomment %}
+
+{% block registration %}
+<h1>{% trans "Account setting successful" %}</h1>
+<p>{% trans "Your e-mail address was activated.Thankyou for using SecHTTP." %}</p>
+<p><a href='/proxy'>TOP</a></p>
+{% endblock %}
