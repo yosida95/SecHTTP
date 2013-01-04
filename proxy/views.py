@@ -67,35 +67,14 @@ def viewer(request,page_id):
 
                 uri_obj = AccessURI(user=request.user,cli_access_id=page_id_lst[num],create_date=timezone.now(),proto=proto,fqdn=fqdn,path=path)
                 uri_obj.save()
+
+            response = HttpResponse(validated_page_data,status=status_code)
+            response['Content-Type']=mime+'; charset=utf-8'
+ 
         else:
             validated_page_data = page_raw_data
-
-        response = HttpResponse(validated_page_data,status=status_code)
-        response['Content-Type']=mime+'; charset=utf-8'
+            response = HttpResponse(validated_page_data,status=status_code)
+            response['Content-Type']=content_type
+ 
         return response
-
-    if request.META['REQUEST_METHOD']=='POST':
-        data = get_object_or_404(AccessURI,cli_access_id=page_id,user=request.user)
-
-        postdata = request['POST']
-        
-        resolver=rightdns.Resolve()
-        ip_addr = resolver.request([{'dns_ipaddr':'210.171.161.7','weight':15},{'dns_ipaddr':'198.153.192.40','weight':12},{'dns_ipaddr':'8.8.8.8','weight':10}],data.fqdn)
-        access=accessdata.AccessData()
-        ua=request.META['HTTP_USER_AGENT']
-        page_data,status_code,cookiejar,now_uri,encoding = access.post(ip_addr,data.proto,data.path,data.fqdn,ua,payload)
-
-        valid = validdat.ValidDat()
-        validated_page_data,page_id_lst,page_uri_lst = valid.valid(page_data,now_uri)
-
-        for num in range(len(page_id_lst)):
-            add_addr = page_uri_lst[num]
-            proto=urlparse(add_addr).scheme
-            fqdn=urlparse(add_addr).netloc
-            path=urlparse(add_addr).path+"?"+urlparse(add_addr).query
-
-            p = AccessURI(user=request.user,cli_access_id=page_id_lst[num],create_date=timezone.now(),proto=proto,fqdn=fqdn,path=path)
-            p.save()
-
-        return HttpResponse(validated_page_data,status=status_code)
 
