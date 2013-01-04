@@ -11,10 +11,10 @@ How to use
 
 Required Modules(Able to install from pip)(ex. `sudo pip install django`)
 -----------------------------
-*Python2.7
-*Django1.4
-*django-registration
-*BeautifulSoup4
-*PyDNS
-*requests
+* Python2.7
+* Django1.4
+* django-registration
+* BeautifulSoup4
+* PyDNS
+* requests
 
