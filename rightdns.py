@@ -3,34 +3,55 @@
 import DNS
 
 class Resolve:
-    def request(self,dns_weight_list,fqdn):
-        req=DNS.Request(qtype='ANY')
-        res_list = [self.send_req(req,dns_weight,fqdn) for dns_weight in dns_weight_list]
-        #very ugly
-        ipaddr_list=list()
+    def request(self,dns_data_list,fqdn):
+        #TODO:Request with TCP
+        ipaddr_list = list()
         weight_list=list()
-        for res in res_list:
-            #if domain is not availavle
-            if not res['ipaddr']:
-                res['ipaddr']=[False]
+        error_weight = 0
+        ng_ipaddr = '198.153.192.3'
 
-            for ipaddr in res['ipaddr']:
-                try:
-                    same_ipaddr_num = ipaddr_list.index(ipaddr)
-                    weight_list[same_ipaddr_num]+=res['weight']
-                #if new ipaddr
-                except ValueError:
-                    ipaddr_list.append(ipaddr)
-                    weight_list.append(res['weight'])
+        for dns_data in dns_data_list:
+            try:
+                new_ipaddr_list = self.send_req(dns_data['ipaddr'],fqdn)
+            except DNS.Base.ServerError as e:
+                if e.rcode==3:
+                    error_weight+=dns_data['weight']
+            except DNS.Base.TimeoutError:
+                raise NoServerError
+                
+            else:
+                for new_ipaddr in new_ipaddr_list:
+                    try:
+                        same_ipaddr_index = ipaddr_list.index(new_ipaddr)
+                    except ValueError:
+                        if new_ipaddr==ng_ipaddr:
+                            continue
+                        ipaddr_list.append(new_ipaddr)
+                        weight_list.append(dns_data['weight'])
+                    else:
+                        weight_list[same_ipaddr_index]+=dns_data['weight']
 
-        max_weight_num = weight_list.index(max(weight_list))
-        print ipaddr_list,weight_list
-        return ipaddr_list[max_weight_num]
+        try:
+            max_weight_num = weight_list.index(max(weight_list))
+            if max_weight_num<error_weight:
+                raise NoFQDNError
+        except ValueError:
+            raise NoFQDNError
+        max_ipaddr = ipaddr_list[max_weight_num]
+        return max_ipaddr
 
-    def send_req(self,req,dns_weight,fqdn):
-        res=req.req(server=dns_weight['dns_ipaddr'],name=fqdn,qtype="A")
-        ipaddr=[answer['data'] for answer in res.answers]
-        return {'ipaddr':ipaddr,'weight':dns_weight['weight']}
+    def send_req(self,dns_addr,fqdn):
+        DNS.defaults['server']=[dns_addr]
+        ipaddr=DNS.dnslookup(fqdn,'A')
+        return ipaddr
+
+class NoServerError(Exception):
+    def __str__(self):
+        return "No DNS server found!"
+class NoFQDNError(Exception):
+    def __str__(self):
+        return "No such FQDN found!"
+    
 
 #resolver = Resolve()
-#print resolver.request([{'dns_ipaddr':'210.171.161.7','weight':15},{'dns_ipaddr':'198.153.192.40','weight':12},{'dns_ipaddr':'8.8.8.8','weight':10}],'www.e-ontap.com')
+#print resolver.request([{'ipaddr':'198.153.192.4','weight':12},{'ipaddr':'8.8.8.4','weight':10}],'www.google.co.jp')

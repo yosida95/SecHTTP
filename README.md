@@ -1,6 +1,7 @@
 SecHTTP(by Python)
 =============================
 ###This project is under The MIT Licence. Please check it in ./mitlicence.txt before using this codes.
+###Author:LGA128(https://lga128.net/,@LGA128)
 - - -
 
 How to use
@@ -11,7 +12,7 @@ How to use
 
 Required Modules(Able to install from pip)(ex. `sudo pip install django`)
 -----------------------------
-* Python2.7
+* Python2.7\>=
 * Django1.4
 * django-registration
 * BeautifulSoup4

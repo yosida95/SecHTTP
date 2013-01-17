@@ -13,11 +13,15 @@ class AccessData:
         if referer:
             headers["Referer"]=referer
 
-        res_data = requests.get(uri,headers=headers,cookies=cookie,verify=True,allow_redirects=True)
+        session = requests.Session()
+        session.max_redirects=10
+
+        res_data = session.get(uri,headers=headers,cookies=cookie,verify=True,allow_redirects=True)
+        now_uri = res_data.url
+
         data = res_data.text
         status_code = res_data.status_code
         res_cookie = res_data.cookies
-        now_uri = res_data.url
         encoding = res_data.encoding
         content_type = res_data.headers['Content-Type']
         

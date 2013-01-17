@@ -7,7 +7,12 @@ class ValidDat:
     def valid(self,html,base_uri):
         self.base_uri = base_uri
         self.soup = BeautifulSoup(html)
+
+        self.remove_tag('script')
+        self.remove_tag('object')
         
+        self.unwrap_tag('noscript')
+
         self.page_uri_lst = list()
         self.page_id_lst = list()
 
@@ -26,10 +31,7 @@ class ValidDat:
         #img
         img_list = self.soup.find_all('img')
         self.change_link(img_list,'src')
-
-        self.remove_tag('script')
-        self.remove_tag('object')
-        
+       
         return self.soup.prettify(),self.page_id_lst,self.page_uri_lst
 
     def change_link(self,tag_list,change_attribute):
@@ -52,4 +54,8 @@ class ValidDat:
         for tag in tag_list:
             tag.extract()
         
+    def unwrap_tag(self,tag_name):
+        tag_list = self.soup.find_all(tag_name)
+        for tag in tag_list:
+            tag.unwrap()
 
