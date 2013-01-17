@@ -38,6 +38,7 @@ def viewer_home(request):
 @login_required
 def viewer(request,page_id):
     if request.META['REQUEST_METHOD']=='GET':
+        dns_data_list = [{'ipaddr':'198.153.192.40','weight':12},{'ipaddr':'8.8.8.8','weight':10}]
         data = get_object_or_404(AccessURI,cli_access_id=page_id,user=request.user)
         #use cache if availavle
         try:
@@ -45,13 +46,13 @@ def viewer(request,page_id):
             ip_addr = cache_obj.ip_addr
         except IndexError:
             resolver=rightdns.Resolve()
-            ip_addr = resolver.request([{'dns_ipaddr':'210.171.161.7','weight':15},{'dns_ipaddr':'198.153.192.40','weight':12},{'dns_ipaddr':'8.8.8.8','weight':10}],data.fqdn)
+            ip_addr = resolver.request(dns_data_list,data.fqdn)
             cache_w_obj = DNSCache(fqdn=data.fqdn,ip_addr=ip_addr,request_date=timezone.now())
             cache_w_obj.save()
 
         access=accessdata.AccessData()
         ua=request.META['HTTP_USER_AGENT']
-        page_raw_data,status_code,cookiejar,now_uri,encoding,content_type = access.get(ip_addr,data.proto,data.path,data.fqdn,ua)
+        page_raw_data,status_code,cookiejar,encoding,content_type,now_uri = access.get(ip_addr,data.proto,data.path,data.fqdn,ua,dns_data_list)
         mime = content_type.split(';')[0]
         if mime=='text/html':
             page_data = smart_unicode(page_raw_data,encoding=encoding)
