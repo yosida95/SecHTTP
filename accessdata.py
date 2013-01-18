@@ -6,41 +6,45 @@ import rightdns
 
 class AccessData:
     #path:"/hoho/ho.png"
-    def get(self,ipaddr,proto,path,fqdn,ua,dns_data_list,cookie=None,referer=None):
+    def get(self,ipaddr,base_uri,ua,dns_data_list,cookie=None,referer=None):
 
-        uri = "%s://%s%s"%(proto,ipaddr,path)
+        urldat = urlparse(base_uri)
+        scheme = urldat.scheme
+        server_dir = urldat.path
+        if not server_dir:
+            server_dir = '/'
+        path = server_dir+'?'+urldat.query
+        port = urldat.port
+        fqdn = urldat.hostname
+        if not port:
+            uri = '%s://%s%s'%(scheme,ipaddr,path)
+        else:
+            uri = '%s://%s:%s%s'%(scheme,ipaddr,port,path)
 
         headers = dict()
         headers["User-Agent"]=ua
-        headers["Host"]=fqdn
         if referer:
             headers["Referer"]=referer
 
-        #ugly...
-        status_code=301
-        while status_code == 301 or status_code==302 or status_code==303 or status_code==307:
+        if scheme=='http':
             res_data = requests.get(uri,headers=headers,cookies=cookie,verify=True,allow_redirects=False)
-            status_code = res_data.status_code
-            try:
-                new_uri = res_data.headers['location']
-                host = urlparse(new_uri).hostname
-                path = urlparse(new_uri).path
-                headers['Host'] = host
-                resolver = rightdns.Resolve()
-                ipaddr = resolver.request(dns_data_list,host)
-                uri = "%s://%s%s"%(proto,ipaddr,path)
+            headers["Host"]=fqdn
+        elif scheme=='https':
+            res_data = requests.get(base_uri,headers=headers,cookies=cookie,verify=True,allow_redirects=False)
 
-            except (ValueError,AttributeError):
-                break
+        try:
+            new_uri = res_data.headers['location']
+
+        except KeyError:
+            new_uri = base_uri
 
         data = res_data.text
         status_code = res_data.status_code
         res_cookie = res_data.cookies
         encoding = res_data.encoding
         content_type = res_data.headers['Content-Type']
-        now_uri = uri
         
-        return data,status_code,res_cookie,encoding,content_type,now_uri
+        return data,status_code,res_cookie,encoding,content_type,new_uri
 
 
 #access = AccessData()

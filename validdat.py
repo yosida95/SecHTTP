@@ -43,10 +43,15 @@ class ValidDat:
 
             if not uri in self.page_uri_lst:
                 page_id = page_id_maker.make()
-                self.page_id_lst.append(page_id)
                 next_uri=urlparse.urljoin(self.base_uri,uri)
+                next_uri_scheme = urlparse.urlparse(next_uri).scheme
+                #if ex)mailto:
+                if not (next_uri_scheme=='http' or next_uri_scheme=='https'):
+                    continue
+
+                self.page_id_lst.append(page_id)
                 self.page_uri_lst.append(next_uri)
-                #change_a
+                #change_tag
                 tag[change_attribute]='../'+page_id
             else:
                 next_uri=urlparse.urljoin(self.base_uri,uri)
