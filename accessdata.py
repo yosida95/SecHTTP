@@ -27,8 +27,8 @@ class AccessData:
             headers["Referer"]=referer
 
         if scheme=='http':
-            res_data = requests.get(uri,headers=headers,cookies=cookie,verify=True,allow_redirects=False)
             headers["Host"]=fqdn
+            res_data = requests.get(uri,headers=headers,cookies=cookie,verify=True,allow_redirects=False)
         elif scheme=='https':
             res_data = requests.get(base_uri,headers=headers,cookies=cookie,verify=True,allow_redirects=False)
 
