@@ -36,7 +36,11 @@ class ValidDat:
 
     def change_link(self,tag_list,change_attribute):
         for tag in tag_list:
-            uri=tag[change_attribute]
+            try:
+                uri=tag[change_attribute]
+            except KeyError:
+                continue
+
             if not uri in self.page_uri_lst:
                 page_id = page_id_maker.make()
                 self.page_id_lst.append(page_id)
