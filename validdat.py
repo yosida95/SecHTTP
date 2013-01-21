@@ -10,27 +10,36 @@ class ValidDat:
 
         self.remove_tag('script')
         self.remove_tag('object')
+        self.remove_tag('iframe')
         
         self.unwrap_tag('noscript')
 
         self.page_uri_lst = list()
         self.page_id_lst = list()
 
-        #for_a
+        #a
         a_list = self.soup.find_all('a')
         self.change_link(a_list,'href')
 
-        #for_link
+        #link
         link_list = self.soup.find_all('link')
         self.change_link(link_list,'href')
 
-        #for_form
+        #form
         form_list = self.soup.find_all('form')
         self.change_link(form_list,'action')
 
         #img
         img_list = self.soup.find_all('img')
         self.change_link(img_list,'src')
+
+        #meta
+        meta_list = self.soup.find_all('meta')
+        self.change_link(meta_list,'content')
+
+        #span
+        span_list = self.soup.find_all('span')
+        self.change_link(span_list,'data-href')
        
         return self.soup.prettify(),self.page_id_lst,self.page_uri_lst
 

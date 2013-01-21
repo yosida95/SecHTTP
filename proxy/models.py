@@ -6,7 +6,6 @@ class AccessURI(models.Model):
     cli_access_id=models.CharField('number to access uri',max_length=10)
     create_date=models.DateTimeField('date created')
     uri=models.CharField(max_length=500)
-    fqdn=models.CharField(max_length=300)
 
 class DNSCache(models.Model):
     fqdn = models.CharField(max_length=200)
