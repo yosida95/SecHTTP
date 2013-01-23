@@ -75,22 +75,36 @@ def viewer(request,page_id):
         if mime=='text/html' or mime=='application/xhtml+xml' or mime=='application/xml' or mime=='text/xml':
             page_data = smart_unicode(page_raw_data,encoding=encoding)
 
-            valid = validdat.ValidDat()
-            validated_page_data,page_id_lst,page_uri_lst = valid.valid(page_data,open_uri)
+            html_valid = validdat.Html()
+            validated_page_data,page_id_lst,page_uri_lst = html_valid.valid(page_data,open_uri)
 
-            for num in range(len(page_id_lst)):
-                add_addr = page_uri_lst[num]
-
-                uri_obj = AccessURI(user=request.user,cli_access_id=page_id_lst[num],create_date=timezone.now(),uri=add_addr)
+            for num,(page_id,add_addr) in enumerate(zip(page_id_lst,page_uri_lst)):
+                uri_obj = AccessURI(user=request.user,cli_access_id=page_id,create_date=timezone.now(),uri=add_addr)
                 uri_obj.save()
 
             response = HttpResponse(validated_page_data,status=status_code)
             response['Content-Type']=mime+'; charset=utf-8'
+            response['Cache-Control']='no-cache'
+            
+        elif mime=='text/css':
+            page_data = smart_unicode(page_raw_data,encoding=encoding)
+            css_valid = validdat.Css()
+            validated_page_data,page_id_lst,page_uri_lst = css_valid.valid(page_data,open_uri)
+
+            for num,(page_id,add_addr) in enumerate(zip(page_id_lst,page_uri_lst)):
+                uri_obj = AccessURI(user=request.user,cli_access_id=page_id,create_date=timezone.now(),uri=add_addr)
+                uri_obj.save()
+                
+            response = HttpResponse(validated_page_data,status=status_code)
+            response['Content-Type']=mime+'; charset=utf-8'
+            response['Cache-Control']='no-cache'
  
-        elif mime=='text/plain' or mime=='image/jpeg' or mime=='image/png' or mime=='image/gif':
+        #elif mime=='text/plain' or mime=='image/jpeg' or mime=='image/png' or mime=='image/gif':
+        else:
             validated_page_data = page_raw_data
             response = HttpResponse(validated_page_data,status=status_code)
             response['Content-Type']=content_type
+            response['Cache-Control']='no-cache'
 
         #elif mime=='text/css':
         #use tinycss or cssutils

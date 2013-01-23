@@ -2,8 +2,40 @@
 from bs4 import BeautifulSoup
 import page_id_maker
 import urlparse
+import cssutils
+from cssutils.css import CSSImportRule,CSSComment,CSSStyleRule
+import logging
 
-class ValidDat:
+
+class URIListmaker:
+    def page_uri_lister(self,uri,base_uri,page_id_lst,page_uri_lst):
+
+        if not uri in page_uri_lst:
+            page_id = page_id_maker.make()
+            next_uri=urlparse.urljoin(base_uri,uri)
+            next_uri_scheme = urlparse.urlparse(next_uri).scheme
+            #if ex)mailto:
+            if not (next_uri_scheme=='http' or next_uri_scheme=='https'):
+                return page_id_lst,page_uri_lst,False
+
+            page_id_lst.append(page_id)
+            page_uri_lst.append(next_uri)
+        else:
+            next_uri=urlparse.urljoin(base_uri,uri)
+            page_id = page_id_lst[page_uri_lst.index(next_uri)]
+        self.page_id_lst = page_id_lst
+        self.page_uri_lst = page_id_lst
+
+        return page_id_lst,page_uri_lst,page_id
+
+    #ugly
+    def uri_replacer(self,uri,base_uri):
+        self.page_id_lst,self.page_uri_lst,self.page_id = self.page_uri_lister(uri,base_uri,self.page_id_lst,self.page_uri_lst)
+        return '../'+self.page_id
+
+
+
+class Html(URIListmaker):
     def valid(self,html,base_uri):
         self.base_uri = base_uri
         self.soup = BeautifulSoup(html)
@@ -16,6 +48,7 @@ class ValidDat:
 
         self.page_uri_lst = list()
         self.page_id_lst = list()
+        self.base_uri=base_uri
 
         #a
         a_list = self.soup.find_all('a')
@@ -40,6 +73,7 @@ class ValidDat:
         #span
         span_list = self.soup.find_all('span')
         self.change_link(span_list,'data-href')
+        #self.change_inline_style(span_list)
        
         return self.soup.prettify(),self.page_id_lst,self.page_uri_lst
 
@@ -49,23 +83,15 @@ class ValidDat:
                 uri=tag[change_attribute]
             except KeyError:
                 continue
-
-            if not uri in self.page_uri_lst:
-                page_id = page_id_maker.make()
-                next_uri=urlparse.urljoin(self.base_uri,uri)
-                next_uri_scheme = urlparse.urlparse(next_uri).scheme
-                #if ex)mailto:
-                if not (next_uri_scheme=='http' or next_uri_scheme=='https'):
-                    continue
-
-                self.page_id_lst.append(page_id)
-                self.page_uri_lst.append(next_uri)
+            new_page_id_lst,new_page_uri_lst,page_id = self.page_uri_lister(uri,self.base_uri,self.page_id_lst,self.page_uri_lst)
+            if page_id==False:
+                #change_tag
+                tag[change_attribute]=uri
+            else:
                 #change_tag
                 tag[change_attribute]='../'+page_id
-            else:
-                next_uri=urlparse.urljoin(self.base_uri,uri)
-                page_id = self.page_id_lst[self.page_uri_lst.index(next_uri)]
-                tag[change_attribute]='../'+page_id
+            self.page_id_lst=new_page_id_lst
+            self.page_uri_lst=new_page_uri_lst
 
     def remove_tag(self,tag_name):
         tag_list = self.soup.find_all(tag_name)
@@ -76,4 +102,19 @@ class ValidDat:
         tag_list = self.soup.find_all(tag_name)
         for tag in tag_list:
             tag.unwrap()
+
+#    def change_inline_style(self,tag_list):
+#        for tag in tag_list:
+#            style = cssutils.css.CSSStyleDeclaration(cssText=css)
+
+class Css(URIListmaker):
+    def valid(self,page_data,base_uri):
+        self.page_id_lst=list()
+        self.page_uri_lst=list()
+        cssutils.log.setLevel(logging.CRITICAL)
+        cssutils.cssproductions.MACROS['name'] = r'[\*]?{nmchar}+'
+        sheet = cssutils.parseString(page_data)
+        cssutils.replaceUrls(sheet,lambda url: self.uri_replacer(url,base_uri))
+        return sheet.cssText,self.page_id_lst,self.page_uri_lst
+    
 
