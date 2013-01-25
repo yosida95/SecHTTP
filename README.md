@@ -18,4 +18,5 @@ Required Modules(Able to install from pip)(ex. `sudo pip install django`)
 * BeautifulSoup4
 * PyDNS
 * requests
+* cssutils
 

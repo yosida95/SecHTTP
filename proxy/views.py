@@ -77,6 +77,7 @@ def viewer(request,page_id):
 
             html_valid = validdat.Html()
             validated_page_data,page_id_lst,page_uri_lst = html_valid.valid(page_data,open_uri)
+            print page_id_lst,page_uri_lst
 
             for num,(page_id,add_addr) in enumerate(zip(page_id_lst,page_uri_lst)):
                 uri_obj = AccessURI(user=request.user,cli_access_id=page_id,create_date=timezone.now(),uri=add_addr)
@@ -85,6 +86,7 @@ def viewer(request,page_id):
             response = HttpResponse(validated_page_data,status=status_code)
             response['Content-Type']=mime+'; charset=utf-8'
             response['Cache-Control']='no-cache'
+            response['Pragma']='no-cache'
             
         elif mime=='text/css':
             page_data = smart_unicode(page_raw_data,encoding=encoding)
@@ -98,6 +100,7 @@ def viewer(request,page_id):
             response = HttpResponse(validated_page_data,status=status_code)
             response['Content-Type']=mime+'; charset=utf-8'
             response['Cache-Control']='no-cache'
+            response['Pragma']='no-cache'
  
         #elif mime=='text/plain' or mime=='image/jpeg' or mime=='image/png' or mime=='image/gif':
         else:
@@ -105,10 +108,7 @@ def viewer(request,page_id):
             response = HttpResponse(validated_page_data,status=status_code)
             response['Content-Type']=content_type
             response['Cache-Control']='no-cache'
-
-        #elif mime=='text/css':
-        #use tinycss or cssutils
-            
+            response['Pragma']='no-cache'
  
         return response
 
