@@ -121,6 +121,7 @@ INSTALLED_APPS = (
     'registration',
     'django.contrib.humanize',
     'proxy',
+    'gunicorn',
 )
 ACCOUNT_ACTIVATION_DAYS=1
 EMAIL_USE_TLS=True

@@ -76,7 +76,9 @@ class Html(URIListmaker):
         #span
         span_list = self.soup.find_all('span')
         self.change_link(span_list,'data-href')
-        self.change_inline_style(span_list)
+
+        style_list = self.soup.find_all('style')
+        self.change_inline_style(style_list)
        
         return self.soup.prettify(),self.page_id_lst,self.page_uri_lst
 
@@ -129,10 +131,10 @@ class Css(URIListmaker):
         cssutils.log.setLevel(logging.CRITICAL)
         cssutils.cssproductions.MACROS['name'] = r'[\*]?{nmchar}+'
 
-        if inline:
-            sheet = cssutils.parseStyle(page_data)
-        else:
+        try:
             sheet = cssutils.parseString(page_data)
+        except:
+            sheet = cssutils.css.CSSStyleDeclaration(cssText=page_data)
 
         cssutils.replaceUrls(sheet,lambda url: self.uri_replacer(url,base_uri))
         return sheet.cssText,self.page_id_lst,self.page_uri_lst

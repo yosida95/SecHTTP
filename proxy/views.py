@@ -77,7 +77,6 @@ def viewer(request,page_id):
 
             html_valid = validdat.Html()
             validated_page_data,page_id_lst,page_uri_lst = html_valid.valid(page_data,open_uri)
-            print page_id_lst,page_uri_lst
 
             for num,(page_id,add_addr) in enumerate(zip(page_id_lst,page_uri_lst)):
                 uri_obj = AccessURI(user=request.user,cli_access_id=page_id,create_date=timezone.now(),uri=add_addr)
