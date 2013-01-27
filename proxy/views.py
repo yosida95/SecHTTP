@@ -9,7 +9,6 @@ from django.utils.encoding import smart_unicode
 from django.template import RequestContext
 from urlparse import urlparse
 import accessdata
-import rightdns
 import validdat
 import requests
 
@@ -63,16 +62,17 @@ def viewer(request, page_id):
 
             # use cache if availavle
             try:
-                cache_obj = DNSCache.objects.filter(
-                    fqdn=fqdn
-                ).order_by('request_date')[0]
-                ip_addr = cache_obj.ip_addr
-            except IndexError:
-                resolver = rightdns.Resolve()
-                ip_addr = resolver.request(dns_data_list, fqdn)
-                cache_w_obj = DNSCache(fqdn=fqdn, ip_addr=ip_addr,
-                                       request_date=timezone.now())
-                cache_w_obj.save()
+                cache_obj = DNSCache.objects.get(fqdn=fqdn)
+            except DNSCache.DoesNotExist:
+                cache_obj = DNSCache(fqdn=fqdn)
+                cache_obj.update_ip_addr(dns_data_list)
+                cache_obj.save()
+            else:
+                if cache_obj.is_expired():
+                    cache_obj.update_ip_addr(dns_data_list)
+                    cache_obj.save()
+
+            ip_addr = cache_obj.ip_addr
 
             (page_raw_data, status_code, cookiejar,
              encoding, content_type, redirect_uri, change_uri)\
