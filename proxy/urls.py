@@ -8,5 +8,5 @@ urlpatterns = patterns(
     url(r'^accounts/', include('registration.backends.default.urls')),
     url(r'^logout/', 'proxy.views.logout'),
     url(r'^viewer/$', 'proxy.views.viewer_home'),
-    url(r'^viewer/(?P<page_id>\w+)/$', 'proxy.views.viewer'),
+    url(r'^viewer/(?P<page_id>\w+)/$', 'proxy.views.viewer', name=u'viewer'),
 )

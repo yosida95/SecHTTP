@@ -1,9 +1,14 @@
+import logging
 from datetime import timedelta
 from random import choice
 from string import ascii_letters, digits
+from urlparse import urljoin
 
+import cssutils
 import DNS
+from bs4 import BeautifulSoup
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils import timezone
 
@@ -151,3 +156,96 @@ class DNSRequest(object):
             raise DNSLookupError(response.header[u'rcode'])
 
         return [(data[u'data'], data[u'ttl']) for data in response.answers]
+
+
+class URIReplacer(object):
+
+    def __init__(self, user, base_uri):
+        self.user = user
+        self.base_uri = base_uri
+
+    def get_access_uri(self, uri):
+        access_uri = AccessURI.get_or_create(
+            self.user, urljoin(self.base_uri, uri)
+        )[0]
+
+        return access_uri
+
+
+class HTMLReplacer(URIReplacer):
+
+    def replace(self, html):
+        soup = BeautifulSoup(html)
+
+        soup = self.remove_tags(soup, 'script')
+        soup = self.remove_tags(soup, 'object')
+        soup = self.remove_tags(soup, 'iframe')
+
+        self.unwrap_tag(soup, 'noscript')
+
+        self.replace_tag_attrs(soup, u'a', [u'href'])
+        self.replace_tag_attrs(soup, u'link', [u'href'])
+        self.replace_tag_attrs(soup, u'form', [u'action'])
+        self.replace_tag_attrs(soup, u'img', [u'src'])
+        self.replace_tag_attrs(soup, u'meta', [u'content'])
+        self.replace_tag_attrs(soup, u'span', [u'data-href'])
+
+        self.change_inline_style(soup)
+
+        return soup.prettify()
+
+    def replace_tag_attrs(self, soup, target_tag, target_attrs):
+        for attr in target_attrs:
+            for tag in soup.find_all(target_tag, **{attr: True}):
+                try:
+                    uri = tag[attr]
+                except KeyError:
+                    continue
+                else:
+                    access_uri = self.get_access_uri(uri)
+                    tag[attr] = reverse(
+                        u'viewer', args=(access_uri.get_cli_access_id(), )
+                    )
+
+        return soup
+
+    def remove_tags(self, soup, target_tag):
+        tags = soup.find_all(target_tag)
+        for tag in tags:
+            tag.extract()
+
+        return soup
+
+    def unwrap_tag(self, soup, target_tag):
+        tags = soup.find_all(target_tag)
+        for tag in tags:
+            tag.unwrap()
+
+        return soup
+
+    def change_inline_style(self, soup):
+        replacer = CSSReplacer(self.user, self.base_uri)
+
+        for tag in soup.find_all('style'):
+            tag.string = replacer.replace(tag.string)
+
+        return soup
+
+
+class CSSReplacer(URIReplacer):
+
+    def replace(self, css):
+        cssutils.log.setLevel(logging.CRITICAL)
+        cssutils.cssproductions.MACROS['name'] = ur'[\*]?{nmchar}+'
+
+        try:
+            sheet = cssutils.parseString(css)
+        except:
+            sheet = cssutils.css.CSSStyleDeclaration(cssText=css)
+
+        replacer = lambda url: reverse(
+            u'viewer', args=(self.get_access_uri(url).get_cli_access_id(), )
+        )
+        cssutils.replaceUrls(sheet, replacer)
+
+        return sheet.cssText

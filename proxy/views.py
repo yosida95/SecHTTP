@@ -1,16 +1,20 @@
+from urlparse import urlparse
+
 from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib import auth
-from django.core.urlresolvers import reverse
-from django.shortcuts import render_to_response, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.core.urlresolvers import reverse
 from proxy.models import AccessURI, DNSCache
-from django.utils import timezone
-from django.utils.encoding import smart_unicode
+from django.shortcuts import render_to_response, get_object_or_404
 from django.template import RequestContext
-from urlparse import urlparse
+from django.utils.encoding import smart_unicode
+
 import accessdata
-import validdat
 import requests
+from proxy.models import (
+    HTMLReplacer,
+    CSSReplacer
+)
 
 
 def logout(request):
@@ -82,16 +86,8 @@ def viewer(request, page_id):
         if mime == 'text/html' or mime == 'application/xhtml+xml'\
                 or mime == 'application/xml' or mime == 'text/xml':
             page_data = smart_unicode(page_raw_data, encoding=encoding)
-
-            html_valid = validdat.Html()
-            validated_page_data, page_id_lst, page_uri_lst\
-                = html_valid.valid(page_data, open_uri)
-
-            for num, (page_id, add_addr) in\
-                    enumerate(zip(page_id_lst, page_uri_lst)):
-                uri_obj = AccessURI(user=request.user, cli_access_id=page_id,
-                                    create_date=timezone.now(), uri=add_addr)
-                uri_obj.save()
+            html_replacer = HTMLReplacer(request.user, open_uri)
+            validated_page_data = html_replacer.replace(page_data)
 
             response = HttpResponse(validated_page_data, status=status_code)
             response['Content-Type'] = mime + '; charset=utf-8'
@@ -100,15 +96,8 @@ def viewer(request, page_id):
 
         elif mime == 'text/css':
             page_data = smart_unicode(page_raw_data, encoding=encoding)
-            css_valid = validdat.Css()
-            validated_page_data, page_id_lst, page_uri_lst =\
-                css_valid.valid(page_data, open_uri)
-
-            for num, (page_id, add_addr) in\
-                    enumerate(zip(page_id_lst, page_uri_lst)):
-                uri_obj = AccessURI(user=request.user, cli_access_id=page_id,
-                                    create_date=timezone.now(), uri=add_addr)
-                uri_obj.save()
+            css_replacer = CSSReplacer(request.user, open_uri)
+            validated_page_data = css_replacer.replace(page_data)
 
             response = HttpResponse(validated_page_data, status=status_code)
             response['Content-Type'] = mime + '; charset=utf-8'
