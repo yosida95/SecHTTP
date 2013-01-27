@@ -9,8 +9,8 @@
 <h1>webproxy:home</h1>
 {% if user.is_active %}
     <p>Hello,{{ user.username }}!</p>
-    <p><a href='viewer'>viewer</a></p>
-    <p><a href='logout'>logout</a></p>
+    <p><a href='{% url proxy.views.viewer_home %}'>viewer</a></p>
+    <p><a href='{% url proxy.views.logout %}'>logout</a></p>
 {% else %}
     <p>Hello!</p>
     <p><a href='/proxy/accounts/login'>login</a></p>
