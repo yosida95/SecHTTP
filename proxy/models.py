@@ -3,10 +3,10 @@ from django.contrib.auth.models import User
 
 
 class AccessURI(models.Model):
-    user=models.ForeignKey(User)
-    cli_access_id=models.CharField('number to access uri',max_length=10)
-    create_date=models.DateTimeField('date created')
-    uri=models.CharField(max_length=500)
+    user = models.ForeignKey(User)
+    cli_access_id = models.CharField('number to access uri',max_length=10)
+    create_date = models.DateTimeField('date created')
+    uri = models.CharField(max_length=500)
 
 
 class DNSCache(models.Model):
