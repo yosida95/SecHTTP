@@ -2,10 +2,15 @@ import logging
 from datetime import timedelta
 from random import choice
 from string import ascii_letters, digits
-from urlparse import urljoin
+from urlparse import (
+    urlparse,
+    urlunparse,
+    urljoin
+)
 
 import cssutils
 import DNS
+import requests
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -19,6 +24,15 @@ class DNSLookupError(Exception):
 
 class DNSNoResult(Exception):
     pass
+
+
+class WrongSchemeError(Exception):
+
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return 'Requested scheme(\'%s\') was not http or https' % (self.name)
 
 
 class AccessURI(models.Model):
@@ -249,3 +263,94 @@ class CSSReplacer(URIReplacer):
         cssutils.replaceUrls(sheet, replacer)
 
         return sheet.cssText
+
+
+class ProxyModel(object):
+
+    def __init__(self, request, access_uri, dns_list, cookies={}):
+        self.request = request
+        self.access_uri = access_uri
+        self.dns_list = dns_list
+        self.cookies = cookies
+        self.request_uri = self.resolve_redirect(self.access_uri.get_uri())
+
+    def get_request_uri(self):
+        return self.request_uri
+
+    def get_ipaddr_based_uri(self, host_based_uri):
+        parsed_uri = list(urlparse(host_based_uri))
+        try:
+            dns_cache = DNSCache.objects.get(fqdn=parsed_uri[1].lower())
+        except DNSCache.DoesNotExist:
+            dns_cache = DNSCache(fqdn=parsed_uri[1].lower())
+            dns_cache.update(self.dns_list)
+            dns_cache.save()
+        else:
+            if dns_cache.is_expired():
+                dns_cache.update(self.dns_list)
+
+        parsed_uri[1] = dns_cache.get_ip_addr()
+
+        return urlunparse(parsed_uri)
+
+    def resolve_redirect(self, request_uri, max_redirect_count=10):
+        redirect_count = 0
+        is_continue = True
+
+        headers = {
+            u'User-Agent': self.request.META.get(u'HTTP_User_Agent', u'')
+        }
+
+        while is_continue:
+            if redirect_count > max_redirect_count:
+                raise requests.TooManyRedirects
+
+            parsed_uri = urlparse(request_uri)
+            headers[u'Host'] = parsed_uri.netloc
+            if parsed_uri.scheme == u'http':
+                response = requests.head(
+                    self.get_ipaddr_based_uri(request_uri),
+                    headers=headers, cookies=self.cookies,
+                    allow_redirects=False
+                )
+            else:
+                response = requests.head(
+                    request_uri,
+                    headers=headers, cookies=self.cookies,
+                    allow_redirects=False
+                )
+
+            if response.status_code in (301, 302):
+                request_uri = response.headers[u'location']
+                self.cookies.update(response.cookies)
+                redirect_count += 1
+            else:
+                is_continue = False
+        else:
+            return request_uri
+
+    def get_data(self):
+        parsed_uri = urlparse(self.request_uri)
+        headers = {
+            u'User-Agent': self.request.META.get(u'HTTP_User_Agent', u''),
+            u'Host': parsed_uri.netloc
+        }
+
+        if parsed_uri.scheme == u'http':
+            response = requests.get(
+                self.get_ipaddr_based_uri(self.request_uri),
+                headers=headers, cookies=self.cookies, allow_redirects=False
+            )
+        else:
+            response = requests.get(
+                self.request_uri,
+                headers=headers, cookies=self.cookies, allow_redirects=False,
+                verify=True
+            )
+
+        self.cookies.update(response.cookies)
+
+        return (
+            response.status_code, response.headers.get(u'Content-Type', u''),
+            response.content, response.encoding
+        )

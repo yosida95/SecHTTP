@@ -1,19 +1,19 @@
-from urlparse import urlparse
-
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import (
+    HttpResponse,
+    HttpResponseRedirect
+)
 from django.contrib import auth
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
-from proxy.models import AccessURI, DNSCache
 from django.shortcuts import render_to_response, get_object_or_404
 from django.template import RequestContext
 from django.utils.encoding import smart_unicode
 
-import accessdata
-import requests
 from proxy.models import (
+    AccessURI,
+    CSSReplacer,
     HTMLReplacer,
-    CSSReplacer
+    ProxyModel
 )
 
 
@@ -38,79 +38,40 @@ def viewer_home(request):
 @login_required
 def viewer(request, page_id):
     if request.META['REQUEST_METHOD'] == 'GET':
-
+        text_mime_types = (
+            u'text/html', u'application/xhtml+xml',
+            u'application/xml', u'text/xml'
+        )
         dns_data_list = [{'ipaddr':'198.153.192.40', 'weight':12},
                          {'ipaddr':'8.8.8.8', 'weight':10}]
-        data = get_object_or_404(AccessURI, cli_access_id=page_id,
-                                 user=request.user)
-        open_uri = data.uri
 
-        access = accessdata.AccessData()
-        ua = request.META['HTTP_USER_AGENT']
+        access_uri = get_object_or_404(AccessURI, cli_access_id=page_id,
+                                       user=request.user)
 
-        status_code = None
-        redirect_uri = open_uri
-        change_uri = True
-
-        #ugly
-        redirect_times = 0
-        max_redirect_times = 10
-        while (status_code is None or status_code == 301
-               or status_code == 302) and change_uri is True:
-            redirect_times += 1
-            if redirect_times >= max_redirect_times:
-                raise requests.TooManyRedirects
-
-            open_uri = redirect_uri
-            fqdn = urlparse(open_uri).hostname
-
-            # use cache if availavle
-            try:
-                cache_obj = DNSCache.objects.get(fqdn=fqdn)
-            except DNSCache.DoesNotExist:
-                cache_obj = DNSCache(fqdn=fqdn)
-                cache_obj.update_ip_addr(dns_data_list)
-                cache_obj.save()
-            else:
-                if cache_obj.is_expired():
-                    cache_obj.update_ip_addr(dns_data_list)
-                    cache_obj.save()
-
-            ip_addr = cache_obj.ip_addr
-
-            (page_raw_data, status_code, cookiejar,
-             encoding, content_type, redirect_uri, change_uri)\
-                = access.get(ip_addr, open_uri, ua)
+        proxy = ProxyModel(request, access_uri, dns_data_list)
+        status_code, content_type, page_raw_data, encoding = proxy.get_data()
 
         mime = content_type.split(';')[0]
-        if mime == 'text/html' or mime == 'application/xhtml+xml'\
-                or mime == 'application/xml' or mime == 'text/xml':
-            page_data = smart_unicode(page_raw_data, encoding=encoding)
-            html_replacer = HTMLReplacer(request.user, open_uri)
-            validated_page_data = html_replacer.replace(page_data)
+        if mime in text_mime_types:
+            html_replacer = HTMLReplacer(request.user, proxy.get_request_uri())
+            body = html_replacer.replace(
+                smart_unicode(page_raw_data, encoding=encoding)
+            )
 
-            response = HttpResponse(validated_page_data, status=status_code)
-            response['Content-Type'] = mime + '; charset=utf-8'
-            response['Cache-Control'] = 'no-cache'
-            response['Pragma'] = 'no-cache'
+            content_type = u'%s; charset=utf8' % mime
+        elif mime == u'text/css':
+            css_replacer = CSSReplacer(request.user, proxy.get_request_uri())
+            body = css_replacer.replace(
+                smart_unicode(page_raw_data, encoding=encoding)
+            )
 
-        elif mime == 'text/css':
-            page_data = smart_unicode(page_raw_data, encoding=encoding)
-            css_replacer = CSSReplacer(request.user, open_uri)
-            validated_page_data = css_replacer.replace(page_data)
-
-            response = HttpResponse(validated_page_data, status=status_code)
-            response['Content-Type'] = mime + '; charset=utf-8'
-            response['Cache-Control'] = 'no-cache'
-            response['Pragma'] = 'no-cache'
-
-        # elif mime=='text/plain' or mime=='image/jpeg' or mime=='image/png'\
-        #         or mime=='image/gif':
+            content_type = u'%s; charset=utf8' % mime
         else:
-            validated_page_data = page_raw_data
-            response = HttpResponse(validated_page_data, status=status_code)
-            response['Content-Type'] = content_type
-            response['Cache-Control'] = 'no-cache'
-            response['Pragma'] = 'no-cache'
+            body = page_raw_data
+
+        response = HttpResponse(body, status=status_code)
+        response[u'Content-Type'] = content_type
+        response[u'Cache-Control'] = u'no-cache'
+        response[u'Pragma'] = u'no-cache'
 
         return response
