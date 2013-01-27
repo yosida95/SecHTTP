@@ -10,7 +10,6 @@ from django.template import RequestContext
 from urlparse import urlparse
 import accessdata
 import rightdns
-import page_id_maker
 import validdat
 import requests
 
@@ -25,11 +24,9 @@ def logout(request):
 def viewer_home(request):
     if request.POST and u'uri' in request.POST and request.POST[u'uri']:
         uri = request.POST[u'uri']
-        cli_access_id = page_id_maker.make()
-        p = AccessURI(user=request.user, cli_access_id=cli_access_id,
-                      create_date=timezone.now(), uri=uri)
-        p.save()
-        return HttpResponseRedirect(cli_access_id)
+        p = AccessURI.get_or_create(request.user, uri)[0]
+
+        return HttpResponseRedirect(p.get_cli_access_id())
     else:
         return render_to_response('proxy/viewer_home.html',
                                   context_instance=RequestContext(request))
