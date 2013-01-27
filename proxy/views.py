@@ -23,17 +23,16 @@ def logout(request):
 
 @login_required
 def viewer_home(request):
-    if request.META['REQUEST_METHOD'] == 'GET':
-        return render_to_response('proxy/viewer_home.html',
-                                  context_instance=RequestContext(request))
-
-    elif request.META['REQUEST_METHOD'] == 'POST':
-        uri = request.POST['uri']
+    if request.POST and u'uri' in request.POST and request.POST[u'uri']:
+        uri = request.POST[u'uri']
         cli_access_id = page_id_maker.make()
         p = AccessURI(user=request.user, cli_access_id=cli_access_id,
                       create_date=timezone.now(), uri=uri)
         p.save()
         return HttpResponseRedirect(cli_access_id)
+    else:
+        return render_to_response('proxy/viewer_home.html',
+                                  context_instance=RequestContext(request))
 
 
 @login_required
