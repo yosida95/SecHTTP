@@ -287,7 +287,7 @@ class ProxyModel(object):
             dns_cache.save()
         else:
             if dns_cache.is_expired():
-                dns_cache.update(self.dns_list)
+                dns_cache.update_ip_addr(self.dns_list)
 
         parsed_uri[1] = dns_cache.get_ip_addr()
 
@@ -332,7 +332,7 @@ class ProxyModel(object):
     def get_data(self):
         parsed_uri = urlparse(self.request_uri)
         headers = {
-            u'User-Agent': self.request.META.get(u'HTTP_User_Agent', u''),
+            u'User-Agent': self.request.META.get(u'HTTP_USER_AGENT', u''),
             u'Host': parsed_uri.netloc
         }
 
