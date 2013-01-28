@@ -283,7 +283,7 @@ class ProxyModel(object):
             dns_cache = DNSCache.objects.get(fqdn=parsed_uri[1].lower())
         except DNSCache.DoesNotExist:
             dns_cache = DNSCache(fqdn=parsed_uri[1].lower())
-            dns_cache.update(self.dns_list)
+            dns_cache.update_ip_addr(self.dns_list)
             dns_cache.save()
         else:
             if dns_cache.is_expired():
