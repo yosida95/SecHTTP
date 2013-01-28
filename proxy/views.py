@@ -58,17 +58,16 @@ def viewer(request, page_id):
                 smart_unicode(page_raw_data, encoding=encoding)
             )
 
-            content_type = u'%s; charset=utf8' % mime
         elif mime == u'text/css':
             css_replacer = CSSReplacer(request.user, proxy.get_request_uri())
             body = css_replacer.replace(
                 smart_unicode(page_raw_data, encoding=encoding)
             )
 
-            content_type = u'%s; charset=utf8' % mime
         else:
             body = page_raw_data
 
+        content_type = u'%s; charset=utf-8' % mime
         response = HttpResponse(body, status=status_code)
         response[u'Content-Type'] = content_type
         response[u'Cache-Control'] = u'no-cache'
