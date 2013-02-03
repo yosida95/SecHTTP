@@ -203,6 +203,10 @@ class HTMLReplacer(URIReplacer):
         self.replace_tag_attrs(soup, u'img', [u'src'])
         self.replace_tag_attrs(soup, u'meta', [u'content'])
         self.replace_tag_attrs(soup, u'span', [u'data-href'])
+        self.replace_tag_attrs(soup, u'video', [u'src','poster'])
+        self.replace_tag_attrs(soup, u'command', [u'icon'])
+        self.replace_tag_attrs(soup, u'source', [u'src'])
+
 
         self.change_inline_style(soup)
 
