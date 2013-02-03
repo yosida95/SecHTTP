@@ -1,21 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset='UTF-8'>
-<title>webproxy:home</title>
-</head>
+{% extends "base.html" %}
+{% load i18n %}
 
-<body>
-<h1>webproxy:home</h1>
-{% if user.is_active %}
-    <p>Hello,{{ user.username }}!</p>
-    <p><a href='{% url proxy.views.viewer_home %}'>viewer</a></p>
-    <p><a href='{% url proxy.views.logout %}'>logout</a></p>
-{% else %}
-    <p>Hello!</p>
-    <p><a href='/proxy/accounts/login'>login</a></p>
-    <p><a href='/proxy/accounts/register'>signup</a></p>
-{% endif %}
-</body>
-</html>
+{% block title %}webproxy:home{% endblock %}
 
+{% block content %}
+    <a href='/viewer'>viewer</a>
+{% endblock %}

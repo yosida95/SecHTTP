@@ -1,37 +1,6 @@
-{% comment %}
-**registration/activation_email.txt**
+{% load i18n %}
+{% trans "Activate account at" %} {{ site.name }}:
 
-Used to generate the body of the activation email. Should display a
-link the user can click to activate the account. This template has the
-following context:
+http://{{ site.domain }}{% url registration_activate activation_key %}
 
-``activation_key``
-    The activation key for the new account.
-
-``expiration_days``
-    The number of days remaining during which the account may be
-    activated.
-
-``site``
-    An object representing the site on which the user registered;
-    depending on whether ``django.contrib.sites`` is installed, this
-    may be an instance of either ``django.contrib.sites.models.Site``
-    (if the sites application is installed) or
-    ``django.contrib.sites.models.RequestSite`` (if not). Consult `the
-    documentation for the Django sites framework
-    <http://docs.djangoproject.com/en/dev/ref/contrib/sites/>`_ for
-    details regarding these objects' interfaces.
-{% endcomment %}{% load i18n %}
-{% url registration_activate_url activation_key as activate_url %}
-{% blocktrans with site.name as site_name and site.domain as site_domain %}
-
-{{ site_name }}にご登録いただきありがとうございます.
-Emailアドレスを認証し,アカウントを有効化するために下のURIにアクセスしてください.
-https://{{ site_domain }}/proxy/accounts/activate/{{ activation_key }}
-
-{{ expiration_days }}日以内に認証が完了しない場合は登録が破棄されます.
-このメールにお心当たりがない場合は,お手数ですがこのメールの破棄をお願いいたします.
-
-https://{{site_domain}}/
-{{ site_name }}管理者
-{% endblocktrans %}
+{% blocktrans %}Link is valid for {{ expiration_days }} days.{% endblocktrans %}

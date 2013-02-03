@@ -127,7 +127,7 @@ EMAIL_USE_TLS=True
 EMAIL_HOST='smtp.gmail.com'
 EMAIL_PORT=587
 
-LOGIN_REDIRECT_URL='/proxy/accounts/login'
+LOGIN_REDIRECT_URL='/accounts/login'
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
