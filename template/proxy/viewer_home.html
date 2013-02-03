@@ -7,7 +7,7 @@
 
 <body>
 <h1>webproxy:viewer:home</h1>
-<form action='/proxy/viewer/' method='post'>
+<form action='/viewer/' method='post'>
     {% csrf_token %}
 First access URI:<input type='text' name='uri' size=100>
     <input type='submit' value='open'>
