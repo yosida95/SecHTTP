@@ -302,7 +302,7 @@ class ProxyModel(object):
         is_continue = True
 
         headers = {
-            u'User-Agent': self.request.META.get(u'HTTP_User_Agent', u'')
+            u'User-Agent': self.request.META.get(u'HTTP_USER_AGENT', u'')
         }
 
         while is_continue:
@@ -310,7 +310,7 @@ class ProxyModel(object):
                 raise requests.TooManyRedirects
 
             parsed_uri = urlparse(request_uri)
-            headers[u'Host'] = parsed_uri.netloc
+            headers[u'Host'] = parsed_uri.hostname
             if parsed_uri.scheme == u'http':
                 response = requests.head(
                     self.get_ipaddr_based_uri(request_uri),
@@ -337,7 +337,7 @@ class ProxyModel(object):
         parsed_uri = urlparse(self.request_uri)
         headers = {
             u'User-Agent': self.request.META.get(u'HTTP_USER_AGENT', u''),
-            u'Host': parsed_uri.netloc
+            u'Host': parsed_uri.hostname
         }
 
         if parsed_uri.scheme == u'http':
