@@ -1,7 +1,5 @@
 import logging
 from datetime import timedelta
-# from random import choice
-# from string import ascii_letters, digits
 from urlparse import (
     urlparse,
     urlunparse,
@@ -12,7 +10,6 @@ import cssutils
 import DNS
 import requests
 from bs4 import BeautifulSoup
-# from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils import timezone
@@ -338,7 +335,8 @@ class ProxyModel(object):
                 )
 
             if response.status_code in (301, 302):
-                request_uri = response.headers[u'location']
+                redirect_uri = response.headers[u'location']
+                request_uri = urljoin(request_uri,redirect_uri)
                 self.cookies.update(response.cookies)
                 redirect_count += 1
             else:
