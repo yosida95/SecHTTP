@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
-from random import choice
-from string import ascii_letters, digits
+# from random import choice
+# from string import ascii_letters, digits
 from urlparse import (
     urlparse,
     urlunparse,
@@ -12,10 +12,20 @@ import cssutils
 import DNS
 import requests
 from bs4 import BeautifulSoup
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils import timezone
+
+from Crypto.Cipher import ARC4
+from Crypto import Random
+from Crypto.Hash import SHA512
+import base64
+import cPickle
+import zlib
+import time
+
+from crypto_data import crypto_key
 
 
 class DNSLookupError(Exception):
@@ -32,54 +42,58 @@ class WrongSchemeError(Exception):
         self.name = name
 
     def __str__(self):
-        return 'Requested scheme(\'%s\') was not http or https' % (self.name)
+        return u'Requested scheme(\'%s\') was not http or https' % (self.name)
 
 
-class AccessURI(models.Model):
-    user = models.ForeignKey(User)
-    cli_access_id = models.CharField('number to access uri', max_length=10)
-    create_date = models.DateTimeField('date created')
-    uri = models.CharField(max_length=500)
+class URIManager:
+    def encode(self, uri, time, username, referer):
+        key = crypto_key
+        binary_proto = 2
 
-    def get_user(self):
-        return self.user
+        accessdata = {u'u': uri, u'n': username, u't': time, u'r': referer}
+        accessdata_str = cPickle.dumps(accessdata, binary_proto)
+        compressed_data = zlib.compress(accessdata_str)
+        encrypted_accessdata, nonce = self.encrypt(compressed_data, key)
+        data_list = {u'd': encrypted_accessdata, u'n': nonce}
+        data_list_str = cPickle.dumps(data_list)
+        compressed_data_list_str = zlib.compress(data_list_str)
+        encoded_data = base64.urlsafe_b64encode(compressed_data_list_str)
 
-    def get_cli_access_id(self):
-        return self.cli_access_id
+        return encoded_data
 
-    def get_create_date(self):
-        return self.create_date
+    def decode(self, encoded_data):
+        key = crypto_key
+        binary_proto = 2
 
-    def get_uri(self):
-        return self.uri
+        compressed_data_list_str = base64.urlsafe_b64decode(
+            encoded_data.encode(u'ascii') if isinstance(encoded_data, unicode)
+            else encoded_data
+        )
+        data_list_str = zlib.decompress(compressed_data_list_str)
+        data_list = cPickle.loads(data_list_str)
+        compressed_data = self.decrypt(data_list[u'd'], key, data_list[u'n'])
+        accessdata_str = zlib.decompress(compressed_data)
+        accessdata = cPickle.loads(accessdata_str)
 
-    @classmethod
-    def get_or_create(cls, user, uri):
-        created = False
-        inst = cls.objects.filter(user=user, uri=uri).all()
-        if len(inst) > 0:
-            inst = inst[0]
-        else:
-            created = True
+        uri = accessdata[u'u']
+        username = accessdata[u'n']
+        time = accessdata[u't']
+        referer = accessdata[u'r']
 
-            inst = cls(
-                user=user, cli_access_id=cls.get_unused_cli_access_id(user),
-                create_date=timezone.now(), uri=uri
-            )
-            inst.save()
+        return uri, time, username, referer
 
-        return inst, created
+    def encrypt(self, text, key):
+        nonce = Random.new().read(8)
+        tempkey = SHA512.new(key + nonce).digest()
+        cipher = ARC4.new(tempkey)
+        encrypted_text = cipher.encrypt(text)
+        return encrypted_text, nonce
 
-    @classmethod
-    def get_unused_cli_access_id(cls, user):
-        is_continue = True
-        while is_continue:
-            cli_access_id = "".join(choice(ascii_letters + digits)
-                                    for _ in range(5))
-            if cls.objects.filter(cli_access_id=cli_access_id).count() is 0:
-                is_continue = False
-        else:
-            return cli_access_id
+    def decrypt(self, encrypted_text, key, nonce):
+        tempkey = SHA512.new(key + nonce).digest()
+        cipher = ARC4.new(tempkey)
+        text = cipher.decrypt(encrypted_text)
+        return text
 
 
 class DNSCache(models.Model):
@@ -164,8 +178,8 @@ class DNSRequest(object):
             return results[weights.index(max_weight)]
 
     def _request(self, dns, hostname):
-        request = DNS.Request(qtype='A', server=dns)
-        response = request.req(hostname)
+        request = DNS.Request(qtype='A', server=dns.encode(u'utf8'))
+        response = request.req(hostname.encode(u'utf8'))
         if response.header[u'status'] != u'NOERROR':
             raise DNSLookupError(response.header[u'rcode'])
 
@@ -179,10 +193,11 @@ class URIReplacer(object):
         self.base_uri = base_uri
 
     def get_access_uri(self, uri):
-        access_uri = AccessURI.get_or_create(
-            self.user, urljoin(self.base_uri, uri)
-        )[0]
-
+        urimanager = URIManager()
+        access_uri = urimanager.encode(
+            urljoin(self.base_uri, uri), int(time.time()),
+            self.user.username, self.base_uri
+        )
         return access_uri
 
 
@@ -191,11 +206,11 @@ class HTMLReplacer(URIReplacer):
     def replace(self, html):
         soup = BeautifulSoup(html)
 
-        soup = self.remove_tags(soup, 'script')
-        soup = self.remove_tags(soup, 'object')
-        soup = self.remove_tags(soup, 'iframe')
+        soup = self.remove_tags(soup, u'script')
+        soup = self.remove_tags(soup, u'object')
+        soup = self.remove_tags(soup, u'iframe')
 
-        self.unwrap_tag(soup, 'noscript')
+        self.unwrap_tag(soup, u'noscript')
 
         self.replace_tag_attrs(soup, u'a', [u'href'])
         self.replace_tag_attrs(soup, u'link', [u'href'])
@@ -203,10 +218,9 @@ class HTMLReplacer(URIReplacer):
         self.replace_tag_attrs(soup, u'img', [u'src'])
         self.replace_tag_attrs(soup, u'meta', [u'content'])
         self.replace_tag_attrs(soup, u'span', [u'data-href'])
-        self.replace_tag_attrs(soup, u'video', [u'src','poster'])
+        self.replace_tag_attrs(soup, u'video', [u'src', u'poster'])
         self.replace_tag_attrs(soup, u'command', [u'icon'])
         self.replace_tag_attrs(soup, u'source', [u'src'])
-
 
         self.change_inline_style(soup)
 
@@ -220,9 +234,8 @@ class HTMLReplacer(URIReplacer):
                 except KeyError:
                     continue
                 else:
-                    access_uri = self.get_access_uri(uri)
                     tag[attr] = reverse(
-                        u'viewer', args=(access_uri.get_cli_access_id(), )
+                        u'viewer', args=(self.get_access_uri(uri), )
                     )
 
         return soup
@@ -244,7 +257,7 @@ class HTMLReplacer(URIReplacer):
     def change_inline_style(self, soup):
         replacer = CSSReplacer(self.user, self.base_uri)
 
-        for tag in soup.find_all('style'):
+        for tag in soup.find_all(u'style'):
             tag.string = replacer.replace(tag.string)
 
         return soup
@@ -254,7 +267,7 @@ class CSSReplacer(URIReplacer):
 
     def replace(self, css):
         cssutils.log.setLevel(logging.CRITICAL)
-        cssutils.cssproductions.MACROS['name'] = ur'[\*]?{nmchar}+'
+        cssutils.cssproductions.MACROS[u'name'] = ur'[\*]?{nmchar}+'
 
         try:
             sheet = cssutils.parseString(css)
@@ -262,7 +275,7 @@ class CSSReplacer(URIReplacer):
             sheet = cssutils.css.CSSStyleDeclaration(cssText=css)
 
         replacer = lambda url: reverse(
-            u'viewer', args=(self.get_access_uri(url).get_cli_access_id(), )
+            u'viewer', args=(self.get_access_uri(url), )
         )
         cssutils.replaceUrls(sheet, replacer)
 
@@ -276,7 +289,7 @@ class ProxyModel(object):
         self.access_uri = access_uri
         self.dns_list = dns_list
         self.cookies = cookies
-        self.request_uri = self.resolve_redirect(self.access_uri.get_uri())
+        self.request_uri = self.resolve_redirect(self.access_uri)
 
     def get_request_uri(self):
         return self.request_uri

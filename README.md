@@ -9,7 +9,9 @@ How to use
 -----------------------------
 1. Edit webproxy/clean\_secret\_settings.py
 2. Rename webproxy/clean\_secret\_settings.py to webproxy/secret\_settings.py
-3. `$ python manage.py syncdb`
+3. Edit clean\_crypto\_data.py
+4. Rename clean\_crypto\_data.py to crypto\_data.py
+5. `$ python manage.py syncdb`
 
 Required Modules(Able to install from pip)(ex. `sudo pip install django`)
 -----------------------------
