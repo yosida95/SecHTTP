@@ -176,8 +176,8 @@ class DNSRequest(object):
             return results[weights.index(max_weight)]
 
     def _request(self, dns, hostname):
-        request = DNS.Request(qtype=u'A', server=dns)
-        response = request.req(hostname)
+        request = DNS.Request(qtype='A', server=dns.encode(u'utf8'))
+        response = request.req(hostname.encode(u'utf8'))
         if response.header[u'status'] != u'NOERROR':
             raise DNSLookupError(response.header[u'rcode'])
 
