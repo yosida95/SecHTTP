@@ -1,6 +1,7 @@
 from django.http import (
     HttpResponse,
-    HttpResponseRedirect
+    HttpResponseRedirect,
+    HttpResponseNotFound
 )
 from django.contrib import auth
 from django.contrib.auth.decorators import login_required
@@ -10,11 +11,12 @@ from django.template import RequestContext
 from django.utils.encoding import smart_unicode
 
 from proxy.models import (
-    AccessURI,
+    URIManager,
     CSSReplacer,
     HTMLReplacer,
     ProxyModel
 )
+import time
 
 
 def logout(request):
@@ -27,9 +29,12 @@ def logout(request):
 def viewer_home(request):
     if request.POST and u'uri' in request.POST and request.POST[u'uri']:
         uri = request.POST[u'uri']
-        p = AccessURI.get_or_create(request.user, uri)[0]
+        urimanager = URIManager()
+        referer = ''
+        pageid = urimanager.encode(uri,int(time.time()),request.user.username,referer)
+        print pageid
 
-        return HttpResponseRedirect(p.get_cli_access_id())
+        return HttpResponseRedirect(pageid)
     else:
         return render_to_response('proxy/viewer_home.html',
                                   context_instance=RequestContext(request))
@@ -45,8 +50,10 @@ def viewer(request, page_id):
         dns_data_list = [{'ipaddr':'198.153.192.40', 'weight':12},
                          {'ipaddr':'8.8.8.8', 'weight':10}]
 
-        access_uri = get_object_or_404(AccessURI, cli_access_id=page_id,
-                                       user=request.user)
+        urimanager = URIManager()
+        access_uri,make_user,make_time,referer = urimanager.decode(page_id)
+        if make_user != request.user.username:
+            return HttpResponseNotFound()
 
         proxy = ProxyModel(request, access_uri, dns_data_list)
         status_code, content_type, page_raw_data, encoding = proxy.get_data()
@@ -73,5 +80,6 @@ def viewer(request, page_id):
         response[u'Content-Type'] = content_type
         response[u'Cache-Control'] = u'no-cache'
         response[u'Pragma'] = u'no-cache'
+        response[u'Referer'] = referer
 
         return response

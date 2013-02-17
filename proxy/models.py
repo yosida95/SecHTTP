@@ -17,6 +17,16 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils import timezone
 
+from Crypto.Cipher import ARC4
+from Crypto import Random
+from Crypto.Hash import SHA512
+import base64
+import cPickle
+import zlib
+import time
+
+from crypto_data import crypto_key
+
 
 class DNSLookupError(Exception):
     pass
@@ -35,51 +45,50 @@ class WrongSchemeError(Exception):
         return 'Requested scheme(\'%s\') was not http or https' % (self.name)
 
 
-class AccessURI(models.Model):
-    user = models.ForeignKey(User)
-    cli_access_id = models.CharField('number to access uri', max_length=10)
-    create_date = models.DateTimeField('date created')
-    uri = models.CharField(max_length=500)
+class URIManager:
+    def encode(self,uri,time,username,referer):
+        key = crypto_key
+        binary_proto = 2
 
-    def get_user(self):
-        return self.user
+        accessdata = {'u':uri,'n':username,'t':time,'r':referer}
+        accessdata_str = cPickle.dumps(accessdata,binary_proto)
+        encrypted_accessdata,nonce = self.encrypt(accessdata_str,key)
+        data_list = {'d':encrypted_accessdata,'n':nonce}
+        data_list_str = cPickle.dumps(data_list)
+        compressed_data = zlib.compress(data_list_str)
+        encoded_data = base64.urlsafe_b64encode(compressed_data)
 
-    def get_cli_access_id(self):
-        return self.cli_access_id
+        return encoded_data
 
-    def get_create_date(self):
-        return self.create_date
+    def decode(self,encoded_data):
+        key = crypto_key
+        binary_proto = 2
 
-    def get_uri(self):
-        return self.uri
+        compressed_data = base64.urlsafe_b64decode(encoded_data)
+        data_list_str = zlib.decompress(compressed_data)
+        data_list = cPickle.loads(data_list_str)
+        accessdata_str = self.decrypt(data_list['d'],key,data_list['n'])
+        accessdata = cPickle.loads(accessdata_str)
 
-    @classmethod
-    def get_or_create(cls, user, uri):
-        created = False
-        inst = cls.objects.filter(user=user, uri=uri).all()
-        if len(inst) > 0:
-            inst = inst[0]
-        else:
-            created = True
+        uri = accessdata['u']
+        username = accessdata['n']
+        time = accessdata['t']
+        referer = accessdata['r']
 
-            inst = cls(
-                user=user, cli_access_id=cls.get_unused_cli_access_id(user),
-                create_date=timezone.now(), uri=uri
-            )
-            inst.save()
+        return uri,username,time,referer
 
-        return inst, created
+    def encrypt(self,text,key):
+        nonce = Random.new().read(8)
+        tempkey = SHA512.new(key+nonce).digest()
+        cipher = ARC4.new(tempkey)
+        encrypted_text = cipher.encrypt(text)
+        return encrypted_text,nonce
 
-    @classmethod
-    def get_unused_cli_access_id(cls, user):
-        is_continue = True
-        while is_continue:
-            cli_access_id = "".join(choice(ascii_letters + digits)
-                                    for _ in range(5))
-            if cls.objects.filter(cli_access_id=cli_access_id).count() is 0:
-                is_continue = False
-        else:
-            return cli_access_id
+    def decrypt(self,encrypted_text,key,nonce):
+        tempkey = SHA512.new(key+nonce).digest()
+        cipher = ARC4.new(tempkey)
+        text = cipher.decrypt(encrypted_text)
+        return text
 
 
 class DNSCache(models.Model):
@@ -179,10 +188,10 @@ class URIReplacer(object):
         self.base_uri = base_uri
 
     def get_access_uri(self, uri):
-        access_uri = AccessURI.get_or_create(
-            self.user, urljoin(self.base_uri, uri)
-        )[0]
-
+        urimanager = URIManager()
+        access_uri = urimanager.encode(
+            urljoin(self.base_uri,uri),int(time.time()),self.base_uri
+            )
         return access_uri
 
 
