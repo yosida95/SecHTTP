@@ -193,7 +193,8 @@ class URIReplacer(object):
     def get_access_uri(self, uri):
         urimanager = URIManager()
         access_uri = urimanager.encode(
-            urljoin(self.base_uri, uri), int(time.time()), self.base_uri
+            urljoin(self.base_uri, uri), int(time.time()),
+            self.user.username, self.base_uri
         )
         return access_uri
 
@@ -231,9 +232,8 @@ class HTMLReplacer(URIReplacer):
                 except KeyError:
                     continue
                 else:
-                    access_uri = self.get_access_uri(uri)
                     tag[attr] = reverse(
-                        u'viewer', args=(access_uri.get_cli_access_id(), )
+                        u'viewer', args=(self.get_access_uri(uri), )
                     )
 
         return soup
@@ -273,7 +273,7 @@ class CSSReplacer(URIReplacer):
             sheet = cssutils.css.CSSStyleDeclaration(cssText=css)
 
         replacer = lambda url: reverse(
-            u'viewer', args=(self.get_access_uri(url).get_cli_access_id(), )
+            u'viewer', args=(self.get_access_uri(url), )
         )
         cssutils.replaceUrls(sheet, replacer)
 
