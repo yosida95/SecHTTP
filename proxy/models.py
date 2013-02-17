@@ -53,10 +53,10 @@ class URIManager:
         accessdata = {'u':uri,'n':username,'t':time,'r':referer}
         accessdata_str = cPickle.dumps(accessdata,binary_proto)
         compressed_data = zlib.compress(accessdata_str)
-        encrypted_accessdata,nonce = self.encrypt(accessdata_str,key)
+        encrypted_accessdata,nonce = self.encrypt(compressed_data,key)
         data_list = {'d':encrypted_accessdata,'n':nonce}
         data_list_str = cPickle.dumps(data_list)
-        encoded_data = base64.urlsafe_b64encode(compressed_data)
+        encoded_data = base64.urlsafe_b64encode(data_list_str)
 
         return encoded_data
 
@@ -64,7 +64,7 @@ class URIManager:
         key = crypto_key
         binary_proto = 2
 
-        compressed_data = base64.urlsafe_b64decode(encoded_data)
+        data_list_str = base64.urlsafe_b64decode(encoded_data)
         data_list = cPickle.loads(data_list_str)
         compressed_data = self.decrypt(data_list['d'],key,data_list['n'])
         accessdata_str = zlib.decompress(compressed_data)
