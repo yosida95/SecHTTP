@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
-from random import choice
-from string import ascii_letters, digits
+# from random import choice
+# from string import ascii_letters, digits
 from urlparse import (
     urlparse,
     urlunparse,
@@ -12,7 +12,7 @@ import cssutils
 import DNS
 import requests
 from bs4 import BeautifulSoup
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils import timezone
