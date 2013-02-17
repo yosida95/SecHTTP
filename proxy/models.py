@@ -287,7 +287,7 @@ class ProxyModel(object):
         self.access_uri = access_uri
         self.dns_list = dns_list
         self.cookies = cookies
-        self.request_uri = self.resolve_redirect(self.access_uri.get_uri())
+        self.request_uri = self.resolve_redirect(self.access_uri)
 
     def get_request_uri(self):
         return self.request_uri
