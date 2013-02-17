@@ -42,50 +42,53 @@ class WrongSchemeError(Exception):
         self.name = name
 
     def __str__(self):
-        return 'Requested scheme(\'%s\') was not http or https' % (self.name)
+        return u'Requested scheme(\'%s\') was not http or https' % (self.name)
 
 
 class URIManager:
-    def encode(self,uri,time,username,referer):
+    def encode(self, uri, time, username, referer):
         key = crypto_key
         binary_proto = 2
 
-        accessdata = {'u':uri,'n':username,'t':time,'r':referer}
-        accessdata_str = cPickle.dumps(accessdata,binary_proto)
-        encrypted_accessdata,nonce = self.encrypt(accessdata_str,key)
-        data_list = {'d':encrypted_accessdata,'n':nonce}
+        accessdata = {u'u': uri, u'n': username, u't': time, u'r': referer}
+        accessdata_str = cPickle.dumps(accessdata, binary_proto)
+        encrypted_accessdata, nonce = self.encrypt(accessdata_str, key)
+        data_list = {u'd': encrypted_accessdata, u'n': nonce}
         data_list_str = cPickle.dumps(data_list)
         compressed_data = zlib.compress(data_list_str)
         encoded_data = base64.urlsafe_b64encode(compressed_data)
 
         return encoded_data
 
-    def decode(self,encoded_data):
+    def decode(self, encoded_data):
         key = crypto_key
         binary_proto = 2
 
-        compressed_data = base64.urlsafe_b64decode(encoded_data)
+        compressed_data = base64.urlsafe_b64decode(
+            encoded_data.encode(u'ascii') if isinstance(encoded_data, unicode)
+            else encoded_data
+        )
         data_list_str = zlib.decompress(compressed_data)
         data_list = cPickle.loads(data_list_str)
-        accessdata_str = self.decrypt(data_list['d'],key,data_list['n'])
+        accessdata_str = self.decrypt(data_list[u'd'], key, data_list[u'n'])
         accessdata = cPickle.loads(accessdata_str)
 
-        uri = accessdata['u']
-        username = accessdata['n']
-        time = accessdata['t']
-        referer = accessdata['r']
+        uri = accessdata[u'u']
+        username = accessdata[u'n']
+        time = accessdata[u't']
+        referer = accessdata[u'r']
 
-        return uri,username,time,referer
+        return uri, time, username, referer
 
-    def encrypt(self,text,key):
+    def encrypt(self, text, key):
         nonce = Random.new().read(8)
-        tempkey = SHA512.new(key+nonce).digest()
+        tempkey = SHA512.new(key + nonce).digest()
         cipher = ARC4.new(tempkey)
         encrypted_text = cipher.encrypt(text)
-        return encrypted_text,nonce
+        return encrypted_text, nonce
 
-    def decrypt(self,encrypted_text,key,nonce):
-        tempkey = SHA512.new(key+nonce).digest()
+    def decrypt(self, encrypted_text, key, nonce):
+        tempkey = SHA512.new(key + nonce).digest()
         cipher = ARC4.new(tempkey)
         text = cipher.decrypt(encrypted_text)
         return text
@@ -173,7 +176,7 @@ class DNSRequest(object):
             return results[weights.index(max_weight)]
 
     def _request(self, dns, hostname):
-        request = DNS.Request(qtype='A', server=dns)
+        request = DNS.Request(qtype=u'A', server=dns)
         response = request.req(hostname)
         if response.header[u'status'] != u'NOERROR':
             raise DNSLookupError(response.header[u'rcode'])
@@ -190,8 +193,8 @@ class URIReplacer(object):
     def get_access_uri(self, uri):
         urimanager = URIManager()
         access_uri = urimanager.encode(
-            urljoin(self.base_uri,uri),int(time.time()),self.base_uri
-            )
+            urljoin(self.base_uri, uri), int(time.time()), self.base_uri
+        )
         return access_uri
 
 
@@ -200,11 +203,11 @@ class HTMLReplacer(URIReplacer):
     def replace(self, html):
         soup = BeautifulSoup(html)
 
-        soup = self.remove_tags(soup, 'script')
-        soup = self.remove_tags(soup, 'object')
-        soup = self.remove_tags(soup, 'iframe')
+        soup = self.remove_tags(soup, u'script')
+        soup = self.remove_tags(soup, u'object')
+        soup = self.remove_tags(soup, u'iframe')
 
-        self.unwrap_tag(soup, 'noscript')
+        self.unwrap_tag(soup, u'noscript')
 
         self.replace_tag_attrs(soup, u'a', [u'href'])
         self.replace_tag_attrs(soup, u'link', [u'href'])
@@ -212,10 +215,9 @@ class HTMLReplacer(URIReplacer):
         self.replace_tag_attrs(soup, u'img', [u'src'])
         self.replace_tag_attrs(soup, u'meta', [u'content'])
         self.replace_tag_attrs(soup, u'span', [u'data-href'])
-        self.replace_tag_attrs(soup, u'video', [u'src','poster'])
+        self.replace_tag_attrs(soup, u'video', [u'src', u'poster'])
         self.replace_tag_attrs(soup, u'command', [u'icon'])
         self.replace_tag_attrs(soup, u'source', [u'src'])
-
 
         self.change_inline_style(soup)
 
@@ -253,7 +255,7 @@ class HTMLReplacer(URIReplacer):
     def change_inline_style(self, soup):
         replacer = CSSReplacer(self.user, self.base_uri)
 
-        for tag in soup.find_all('style'):
+        for tag in soup.find_all(u'style'):
             tag.string = replacer.replace(tag.string)
 
         return soup
@@ -263,7 +265,7 @@ class CSSReplacer(URIReplacer):
 
     def replace(self, css):
         cssutils.log.setLevel(logging.CRITICAL)
-        cssutils.cssproductions.MACROS['name'] = ur'[\*]?{nmchar}+'
+        cssutils.cssproductions.MACROS[u'name'] = ur'[\*]?{nmchar}+'
 
         try:
             sheet = cssutils.parseString(css)
