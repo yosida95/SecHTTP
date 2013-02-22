@@ -18,6 +18,7 @@ from Crypto.Cipher import ARC4
 from Crypto import Random
 from Crypto.Hash import SHA512
 import base64
+import json
 import cPickle
 import zlib
 import time
@@ -45,10 +46,9 @@ class WrongSchemeError(Exception):
 class URIManager:
     def encode(self, uri, time, username, referer):
         key = crypto_key
-        binary_proto = 2
 
         accessdata = {u'u': uri, u'n': username, u't': time, u'r': referer}
-        accessdata_str = cPickle.dumps(accessdata, binary_proto)
+        accessdata_str = json.dumps(accessdata, ensure_ascii=False)
         compressed_data = zlib.compress(accessdata_str)
         encrypted_accessdata, nonce = self.encrypt(compressed_data, key)
         data_list = {u'd': encrypted_accessdata, u'n': nonce}
@@ -60,17 +60,15 @@ class URIManager:
 
     def decode(self, encoded_data):
         key = crypto_key
-        binary_proto = 2
 
         compressed_data_list_str = base64.urlsafe_b64decode(
-            encoded_data.encode(u'ascii') if isinstance(encoded_data, unicode)
-            else encoded_data
+            encoded_data.encode(u'ascii')
         )
         data_list_str = zlib.decompress(compressed_data_list_str)
         data_list = cPickle.loads(data_list_str)
         compressed_data = self.decrypt(data_list[u'd'], key, data_list[u'n'])
         accessdata_str = zlib.decompress(compressed_data)
-        accessdata = cPickle.loads(accessdata_str)
+        accessdata = json.loads(accessdata_str)
 
         uri = accessdata[u'u']
         username = accessdata[u'n']
@@ -336,7 +334,7 @@ class ProxyModel(object):
 
             if response.status_code in (301, 302):
                 redirect_uri = response.headers[u'location']
-                request_uri = urljoin(request_uri,redirect_uri)
+                request_uri = urljoin(request_uri, redirect_uri)
                 self.cookies.update(response.cookies)
                 redirect_count += 1
             else:
