@@ -48,7 +48,7 @@ class URIManager:
         key = crypto_key
 
         accessdata = {u'u': uri, u'n': username, u't': time, u'r': referer}
-        accessdata_str = json.dumps(accessdata, ensure_ascii=False)
+        accessdata_str = json.dumps(accessdata)
         compressed_data = zlib.compress(accessdata_str)
         encrypted_accessdata, nonce = self.encrypt(compressed_data, key)
         data_list = {u'd': encrypted_accessdata, u'n': nonce}
@@ -189,9 +189,14 @@ class URIReplacer(object):
         self.base_uri = base_uri
 
     def get_access_uri(self, uri):
+        absolute_uri = urljoin(self.base_uri, uri)
+        scheme = urlparse(absolute_uri).scheme 
+        if not (scheme=='http' or 'https'):
+            raise WrongSchemeError(scheme)
+
         urimanager = URIManager()
         access_uri = urimanager.encode(
-            urljoin(self.base_uri, uri), int(time.time()),
+            absolute_uri, int(time.time()),
             self.user.username, self.base_uri
         )
         return access_uri
