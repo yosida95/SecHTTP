@@ -22,4 +22,5 @@ Required Modules(Able to install from pip)(ex. `sudo pip install django`)
 * PyDNS
 * requests
 * cssutils
+* PyCrypto
 
