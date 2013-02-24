@@ -1,8 +1,22 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}webproxy:home{% endblock %}
+{% block title %}Home{% endblock %}
 
 {% block content %}
-    <a href='/viewer'>viewer</a>
+    <div class="hero-unit">
+        <h1>SecHTTP</h1>
+        <p>HTTPS対応のWebProxyです.HTTPでのみ提供されているページを,安全でない伝送路からでも安全かつ環境非依存で,特別な設定なしに簡単なアクセスを可能にします.</p>
+        <p>
+            <a class="btn btn-large">
+            Learn more
+            </a>
+            {% if user.is_authenticated %}
+                <a class="btn btn-primary btn-large" href="viewer">
+                Viewer
+                </a>
+            {% endif %}
+        </p>
+    </div>
+
 {% endblock %}
