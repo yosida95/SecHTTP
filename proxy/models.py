@@ -222,12 +222,13 @@ class HTMLReplacer(URIReplacer):
         self.replace_tag_attrs(soup, u'video', [u'src', u'poster'])
         self.replace_tag_attrs(soup, u'command', [u'icon'])
         self.replace_tag_attrs(soup, u'source', [u'src'])
+        self.replace_tag_attrs(soup, u'base', [u'href'],'/')
 
         self.change_inline_style(soup)
 
         return soup.prettify()
 
-    def replace_tag_attrs(self, soup, target_tag, target_attrs):
+    def replace_tag_attrs(self, soup, target_tag, target_attrs, change_uri=None):
         for attr in target_attrs:
             for tag in soup.find_all(target_tag, **{attr: True}):
                 try:
@@ -235,9 +236,12 @@ class HTMLReplacer(URIReplacer):
                 except KeyError:
                     continue
                 else:
-                    tag[attr] = reverse(
-                        u'viewer', args=(self.get_access_uri(uri), )
-                    )
+                    if change_uri:
+                        tag[attr] = change_uri
+                    else:
+                        tag[attr] = reverse(
+                            u'viewer', args=(self.get_access_uri(uri), )
+                        )
 
         return soup
 
