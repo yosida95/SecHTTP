@@ -1,17 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset='UTF-8'>
-<title>webproxy:viewer:home</title>
-</head>
+{% extends "base.html" %}
+{% load i18n %}
 
-<body>
-<h1>webproxy:viewer:home</h1>
+{% block title %}Viewer{% endblock %}
+
+{% block content %}
+<h1>SecHTTP::Viewer</h1>
 <form action='/viewer/' method='post'>
     {% csrf_token %}
 First access URI:<input type='text' name='uri' size=100>
-    <input type='submit' value='open'>
+    <input type='submit' value='open' class="btn btn-primary">
 </form>
-</body>
-</html>
+{% endblock %}
 

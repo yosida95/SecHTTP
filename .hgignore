@@ -3,3 +3,4 @@ syntax: glob
 *.pyc
 webproxy/secret_settings.py
 crypto_data.py
+.cache/

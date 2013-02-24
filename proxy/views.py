@@ -43,12 +43,18 @@ def viewer_home(request):
 @login_required
 def viewer(request, page_id):
     if request.META[u'REQUEST_METHOD'] == u'GET':
-        text_mime_types = (
+        text_mime = (
             u'text/html', u'application/xhtml+xml',
             u'application/xml', u'text/xml'
         )
         dns_data_list = [{u'ipaddr': u'198.153.192.40', u'weight': 12},
                          {u'ipaddr': u'8.8.8.8', u'weight': 10}]
+        deny_mime_types = (
+            u'application'
+        )
+        deny_mime = (
+            u'text/javascript',u'text/js',u'text/vbscript' 
+        )
 
         urimanager = URIManager()
         access_uri, make_time, make_user, referer = urimanager.decode(page_id)
@@ -60,7 +66,8 @@ def viewer(request, page_id):
         status_code, content_type, page_raw_data, encoding = proxy.get_data()
 
         mime = content_type.split(u';')[0]
-        if mime in text_mime_types:
+        mime_type = mime.split(u'/')[0]
+        if mime in text_mime:
             html_replacer = HTMLReplacer(request.user, proxy.get_request_uri())
             body = html_replacer.replace(
                 smart_unicode(page_raw_data, encoding=encoding)
@@ -74,6 +81,8 @@ def viewer(request, page_id):
             )
 
             content_type = u'%s; charset=utf-8' % mime
+        elif mime_type in deny_mime_types or mime in deny_mime:
+            body = ''
         else:
             body = page_raw_data
 
