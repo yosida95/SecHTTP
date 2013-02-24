@@ -62,7 +62,8 @@ class URIManager:
         key = crypto_key
 
         compressed_data_list_str = base64.urlsafe_b64decode(
-            encoded_data.encode(u'ascii')
+            encoded_data.encode(u'ascii') if isinstance(encoded_data, unicode)
+            else encoded_data
         )
         data_list_str = zlib.decompress(compressed_data_list_str)
         data_list = cPickle.loads(data_list_str)
