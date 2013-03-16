@@ -2,7 +2,7 @@ SecHTTP(by Python)
 =============================
 ###This project is under The MIT Licence. Please check it in ./mitlicence.txt before using this codes.
 ###Author:LGA128(https://lga128.net/,@LGA128)
-#SpecialThanks:@yoshida95
+#SpecialThanks:@yosida95
 - - -
 
 How to use
